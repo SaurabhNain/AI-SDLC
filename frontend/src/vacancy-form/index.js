@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   TextField,
   Button,
@@ -19,35 +19,42 @@ import {
 } from "@mui/material";
 import { Close as CloseIcon } from "@mui/icons-material";
 import Homepage from "../vacancy";
+import axios from "axios";
+import Dashboard from "../dashboard";
+import { useNavigate } from "react-router-dom";
 
 function UserForm() {
   const [showHomePage, setShowHomePage] = useState(false);
   const [showUserForm, setShowUserForm] = useState(true);
   const [open, setOpen] = useState(false);
+  const [vacancyId, setVacancyId] = useState("");
+  let response;
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     jobTitle: "",
     description: "",
     requirements: "",
-    locations: "",
-    salary: "",
-    lastdate: "",
+    location: "",
+    maxSalary: "",
+    applicationDeadline: "",
+    //createdBy: "john.doe@devon.nl",
   });
   const [errors, setErrors] = useState({
     jobTitle: false,
     description: false,
     requirements: false,
-    locations: false,
-    salary: false,
-    lastdate: false,
+    location: false,
+    maxSalary: false,
+    applicationDeadline: false,
   });
   const [helperTexts, setHelperTexts] = useState({
     jobTitle: "",
     description: "",
     requirements: "",
-    locations: "",
-    salary: "",
-    lastdate: "",
+    location: "",
+    maxSalary: "",
+    applicationDeadline: "",
   });
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -61,7 +68,6 @@ function UserForm() {
   const validateField = (name, value) => {
     let isValid = true;
     let helperText = "";
-
     if (name === "jobTitle" && value.trim() === "") {
       isValid = false;
       helperText = "Job Title cannot be empty";
@@ -71,17 +77,17 @@ function UserForm() {
     } else if (name === "requirements" && value.trim() === "") {
       isValid = false;
       helperText = "Requirements cannot be empty";
-    } else if (name === "locations" && value.trim() === "") {
+    } else if (name === "location" && value.trim() === "") {
       isValid = false;
-      helperText = "Locations cannot be empty";
+      helperText = "Location cannot be empty";
     } else if (
-      name === "salary" &&
+      name === "maxSalary" &&
       (value.trim() === "" || /^-?\d*(\.\d{0,2})?$/.test(value) === false)
     ) {
       isValid = false;
       helperText =
         "Only numeric values with up to two decimal places are allowed";
-    } else if (name === "lastdate" && value.trim() === "") {
+    } else if (name === "applicationDeadline" && value.trim() === "") {
       isValid = false;
       helperText = "Last date cannot be empty";
     }
@@ -90,7 +96,6 @@ function UserForm() {
       ...prevErrors,
       [name]: !isValid,
     }));
-    console.log("Errors:", errors);
 
     setHelperTexts((prevHelperTexts) => ({
       ...prevHelperTexts,
@@ -102,7 +107,7 @@ function UserForm() {
     return Object.values(errors).every((error) => error === false);
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     const fields = Object.keys(formData);
     fields.forEach((field) => {
@@ -112,11 +117,26 @@ function UserForm() {
       (field) => formData[field] !== ""
     );
     if (areAllErrorsFalse() && isAtLeastOneFieldNotEmpty) {
-      setOpen(true);
+      formData.applicationDeadline += "T00:00:00";
+      formData.createdBy = "john.doe@devon.nl";
+
+      try {
+        response = await axios.post(
+          "http://172.190.178.164:8080/recruitment/api/vacancies",
+          formData
+        );
+        console.log("Response:", response);
+      } catch (error) {
+        console.error("Error making the request:", error);
+      }
+      if (response?.status === 201 && response?.vacancyId !== null) {
+        setVacancyId(response.data.vacancyId);
+        setOpen(true);
+      }
+      console.log("Form Data:", formData);
     } else {
       setOpen(false);
     }
-    console.log("Form Data:", formData);
   };
 
   const handleClose = () => {
@@ -180,21 +200,21 @@ function UserForm() {
               helperText={helperTexts.requirements}
             />
             <FormControl fullWidth sx={{ mt: 2 }}>
-              <InputLabel id="locations-label">Locations</InputLabel>
+              <InputLabel id="locations-label">Location</InputLabel>
               <Select
                 labelId="locations-label"
                 id="locations"
-                name="locations"
-                value={formData.locations}
+                name="location"
+                value={formData.location}
                 onChange={handleChange}
-                error={errors.locations}
+                error={errors.location}
               >
                 <MenuItem value="Bangalore">Bangalore</MenuItem>
                 <MenuItem value="Gurgaon">Gurgaon</MenuItem>
                 <MenuItem value="Netherlands">Netherlands</MenuItem>
               </Select>
               <FormHelperText sx={{ color: "red" }}>
-                {helperTexts.locations}
+                {helperTexts.location}
               </FormHelperText>
             </FormControl>
             <TextField
@@ -202,24 +222,24 @@ function UserForm() {
               fullWidth
               id="max-salary"
               label="Max Salary"
-              name="salary"
-              value={formData.salary}
+              name="maxSalary"
+              value={formData.maxSalary}
               onChange={handleChange}
-              error={errors.salary}
-              helperText={helperTexts.salary}
+              error={errors.maxSalary}
+              helperText={helperTexts.maxSalary}
             />
             <TextField
               margin="normal"
               fullWidth
               id="last-date"
               label="Last date to apply"
-              name="lastdate"
+              name="applicationDeadline"
               type="date"
               InputLabelProps={{ shrink: true }}
-              value={formData.lastdate}
+              value={formData.applicationDeadline}
               onChange={handleChange}
-              error={errors.lastdate}
-              helperText={helperTexts.lastdate}
+              error={errors.applicationDeadline}
+              helperText={helperTexts.applicationDeadline}
             />
 
             <Button type="submit" variant="contained" sx={{ mt: 3, mb: 2 }}>
@@ -252,7 +272,7 @@ function UserForm() {
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="alert-dialog-description">
-            Job Id: JOB12345 created successfully.
+            {vacancyId} created successfully.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -261,7 +281,7 @@ function UserForm() {
           </Button>
         </DialogActions>
       </Dialog>
-      {showHomePage && <Homepage />}
+      {showHomePage && navigate("/dashboard")}
     </Container>
   );
 }
