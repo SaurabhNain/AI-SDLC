@@ -47,4 +47,5 @@ test.describe('Job Vacancy Creation', () => {
     expect(errorMessages).toContain('Please enter a job description');
     // Add checks for other fields similarly
   });
+
 });
